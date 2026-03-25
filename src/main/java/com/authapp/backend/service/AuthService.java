@@ -1,10 +1,13 @@
 package com.authapp.backend.service;
 
+import com.authapp.backend.dto.AuthResponse;
+import com.authapp.backend.dto.LoginRequestDTO;
 import com.authapp.backend.dto.RegisterRequestDTO;
 import com.authapp.backend.model.AuthProvider;
 import com.authapp.backend.model.Role;
 import com.authapp.backend.model.UserEntity;
 import com.authapp.backend.repository.UserRepository;
+import com.authapp.backend.security.JwtUtilsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -15,6 +18,7 @@ public class AuthService implements IAuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtilsService jwtUtilsService;
 
     @Override
     public void register(RegisterRequestDTO request) {
@@ -31,6 +35,20 @@ public class AuthService implements IAuthService {
                 .build();
 
         userRepository.save(user);
+    }
+
+    @Override
+    public AuthResponse login(LoginRequestDTO request) {
+        UserEntity user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new RuntimeException("Invalid credentials");
+        }
+
+        String token = jwtUtilsService.generateToken(user.getEmail());
+
+        return new AuthResponse(token);
     }
 
 }
